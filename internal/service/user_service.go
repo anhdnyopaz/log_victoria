@@ -24,7 +24,7 @@ func NewUserService(logger logger.Logger) *UserService {
 	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, user *User) error {
+func (s *UserService) CreateUser(ctx context.Context, user User) error {
 	start := time.Now()
 
 	s.logger.Info(ctx, "Create new User", map[string]interface{}{

@@ -1,0 +1,12 @@
+services:
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    ports:
+      - "9428:9428" # HTTP{ port for log ingestion
+      - "9427:9427" # HTTP port for querying
+    volumes:
+      - victoria_logs_data:/victoria-logs-data
+    command:
+      - -storageDataPath=/victoria-logs-data
+volumes:
+  victoria_logs_data:

@@ -26,6 +26,19 @@ type VictoriaLogsLogger struct {
 	mu            sync.RWMutex //Need to know RWMutex
 }
 
+type VictoriaLogsEntry struct {
+	Msg    string    `json:"_msg"`
+	Time   time.Time `json:"_time"`
+	Stream string    `json:"_stream,omitempty"`
+	// Custom fields
+	Level   string `json:"level,omitempty"`
+	Service string `json:"service,omitempty"`
+	TraceId string `json:"trace_id,omitempty"`
+	UserId  string `json:"user_id,omitempty"`
+	// AdditionalFields
+	Fields map[string]interface{} `json:"fields,omitempty"`
+}
+
 func (v *VictoriaLogsLogger) WithContext(ctx context.Context) Logger {
 	newLogger := &VictoriaLogsLogger{
 		config:        v.config,
@@ -180,6 +193,7 @@ func (v *VictoriaLogsLogger) NewLoggerEntryBatch() []LogEntry {
 }
 
 func (v *VictoriaLogsLogger) sendBatch(batch []LogEntry) {
+	fmt.Printf("Send batch %v\n", batch)
 	if len(batch) == 0 {
 		return
 	}
@@ -187,7 +201,21 @@ func (v *VictoriaLogsLogger) sendBatch(batch []LogEntry) {
 	//Convert to JSONL format
 	var buff bytes.Buffer
 	for _, entry := range batch {
-		data, err := json.Marshal(entry)
+		vlEntry := VictoriaLogsEntry{
+			Msg:     entry.Message,
+			Time:    time.Unix(0, entry.Timestamp).UTC(),
+			Level:   entry.Level.String(),
+			Service: entry.Service,
+			TraceId: entry.TraceID,
+			UserId:  entry.UserID,
+			Fields:  entry.Fields,
+		}
+
+		data, err := json.Marshal(vlEntry)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		fmt.Printf("Send log data: %v\n", entry)
 		if err != nil {
 			continue
 		}
@@ -199,6 +227,8 @@ func (v *VictoriaLogsLogger) sendBatch(batch []LogEntry) {
 	for i := 0; i < v.config.MaxRetries; i++ {
 		if err := v.sendToVictoriaLogs(buff.Bytes()); err == nil {
 			return
+		} else {
+			fmt.Println(err)
 		}
 		time.Sleep(time.Duration(i+1) * time.Second)
 	}
